@@ -17,7 +17,7 @@ class UserProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setUserFromModel(User user) {
+  Future<void> setUserFromModel(User user) async{
     _user = user;
     notifyListeners();
   }

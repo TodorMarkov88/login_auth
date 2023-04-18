@@ -39,7 +39,7 @@ app.use((req, res, next) => {
   })();
 
 
-app.listen(PORT,'192.168.0.100',()=>{
+app.listen(PORT,'192.168.0.104',()=>{
     console.log(`conected at PORT: ${PORT}`)
 })
 

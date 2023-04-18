@@ -73,7 +73,7 @@ class AuthService {
         },
       );
 
-      if (context.mounted) {
+
 
         httpErrorHandle(
           response: res,
@@ -91,7 +91,7 @@ class AuthService {
             );
           },
         );
-      }
+
     } catch (e) {
 
       showSnackBar(context, e.toString());
