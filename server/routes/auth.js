@@ -37,11 +37,11 @@ authRouter.post("/api/signup", async (req, res) => {
       name,
     };
 
-    const [result] = await pool.query("INSERT INTO users SET ?", newUser);
+    const [result] = await pool.query("INSERT INTO users SET ?", [newUser]);
     const user = { id: result.insertId, ...newUser };
 
-    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET);
-    res.json({ token, ...user });
+   
+    res.json(user);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: error.message });
@@ -50,7 +50,7 @@ authRouter.post("/api/signup", async (req, res) => {
 
 
 // Sign In
-authRouter.post("/api/signin", async (req, res) => {
+authRouter.post("/api/signing", async (req, res) => {
   try {
     const { email, password } = req.body;
 
@@ -59,20 +59,23 @@ authRouter.post("/api/signin", async (req, res) => {
       [email]
     );
     const user = users[0];
-
+ 
     if (!user) {
       return res
         .status(400)
         .json({ msg: "User with this email does not exist!" });
     }
-
+   
+     console.log(password)
+  
     const isMatch = await bcryptjs.compare(password, user.password);
-
-    if (!isMatch) {
+ 
+    if (isMatch) {
       return res.status(400).json({ msg: "Incorrect password." });
     }
 
     const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET);
+    
     res.json({ token, ...user });
   } catch (error) {
     console.error(error);

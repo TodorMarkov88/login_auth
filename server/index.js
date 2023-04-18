@@ -7,8 +7,7 @@ const mysql = require("mysql2/promise");
 const authRouter = require("./routes/auth");
 require('dotenv').config()
 
-app.use(express.json())
-app.use(authRouter);
+
 
 
 const DB = mysql.createPool({
@@ -26,17 +25,19 @@ app.use((req, res, next) => {
   req.DB = DB;
   next();
 });
-(async () => {
-    try {
-      const connection = await DB.getConnection();
+app.use(express.json())
+app.use(authRouter);
+// (async () => {
+//     try {
+//       const connection = await DB.getConnection();
 
-      console.log('MySQL database connected successfully!');
-      connection.release();
+//       console.log('MySQL database connected successfully!');
+//       connection.release();
   
-    } catch (error) {
-      console.error(`Error connecting to MySQL database: ${error.message}`);
-    }
-  })();
+//     } catch (error) {
+//       console.error(`Error connecting to MySQL database: ${error.message}`);
+//     }
+//   })();
 
 
 app.listen(PORT,'192.168.0.104',()=>{

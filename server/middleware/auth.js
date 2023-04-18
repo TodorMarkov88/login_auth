@@ -42,7 +42,7 @@ const auth = async (req, res, next) => {
       return res.status(401).json({ msg: 'No auth token, access denied' });
     }
 
-    const decoded = jwt.verify(token, 'passwordKey');
+    const decoded = jwt.verify(token, 'cat');
     const [rows, fields] = await pool.execute(
       'SELECT * FROM users WHERE id = ?',
       [decoded.id]
