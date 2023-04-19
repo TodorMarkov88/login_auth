@@ -1,6 +1,7 @@
 const express = require("express");
 const bcryptjs = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const auth = require("../middleware/auth");
 const authRouter = express.Router();
 require('dotenv').config()
 const mysql = require('mysql2/promise');
@@ -18,72 +19,64 @@ authRouter.post("/api/signup", async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
-    const [existingUser] = await pool.query(
-      "SELECT * FROM users WHERE email = ?",
-      [email]
-    );
-
-    if (existingUser.length) {
-      return res
-        .status(400)
-        .json({ msg: "User with same email already exists!" });
-    }
-
-    const hashedPassword = await bcryptjs.hash(password, 8);
-
-    const newUser = {
+    // Check if the email already exists
+    const [rows] = await pool.execute("SELECT * FROM users WHERE email = ?", [
       email,
-      password: hashedPassword,
-      name,
-    };
-
-    const [result] = await pool.query("INSERT INTO users SET ?", [newUser]);
-    const user = { id: result.insertId, ...newUser };
-
-   
-    res.json(user);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-
-// Sign In
-authRouter.post("/api/signing", async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    const [users] = await pool.query(
-      "SELECT * FROM users WHERE email = ?",
-      [email]
-    );
-    const user = users[0];
- 
-    if (!user) {
-      return res
-        .status(400)
-        .json({ msg: "User with this email does not exist!" });
-    }
-   
-     console.log(password)
-  
-    const isMatch = await bcryptjs.compare(password, user.password);
- 
-    if (isMatch) {
-      return res.status(400).json({ msg: "Incorrect password." });
-    }
-
-    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET);
+    ]);
     
-    res.json({ token, ...user });
+    if (rows.length > 0) {
+      return res.status(400).json({ error: "User with same email already exists!" });
+    }
+
+    // Hash the password
+    const hashedPassword = bcryptjs.hashSync(password, 8);
+
+    // Insert the user into the database
+    const [result] = await pool.execute(
+      "INSERT INTO users (name, email, password) VALUES (?, ?, ?)",
+      [name, email, hashedPassword]
+    );
+
+    // Generate a JWT token
+    const token = jwt.sign({ id: result.insertId }, process.env.JWT_SECRET);
+
+    res.json({ token, name, email });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Server error" });
   }
 });
 
-// Check if token is valid
+// Sign In
+authRouter.post("/api/signing", async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+    // Find the user with the given email
+    const [rows] = await pool.execute("SELECT * FROM users WHERE email = ?", [
+      email,
+    ]);
+    const user = rows[0];
+ 
+    // If user doesn't exist or password doesn't match, return error response
+    if (!user || !bcryptjs.compareSync(password, user.password)) {
+      return res.status(400).json({ msg: "Invalid email or password" });
+    }
+
+    // Generate a JWT token
+    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET);
+
+    // Return success response with token and user details
+    res.json({ token, name: user.name, email });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+
+
+// Verify token
 authRouter.post("/tokenIsValid", async (req, res) => {
   try {
     const token = req.header("x-auth-token");
@@ -92,42 +85,38 @@ authRouter.post("/tokenIsValid", async (req, res) => {
       return res.json(false);
     }
 
-    const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
+    // Verify the token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    if (!decodedToken) {
-      return res.json(false);
-    }
-
-    const [users] = await pool.query(
-      "SELECT * FROM users WHERE id = ?",
-      [decodedToken.id]
-    );
-    const user = users[0];
+    // Find the user with the given ID
+    const [rows] = await pool.execute("SELECT * FROM users WHERE id = ?", [
+      decoded.id,
+    ]);
+    const user = rows[0];
 
     if (!user) {
       return res.json(false);
     }
 
     res.json(true);
-  } catch (error) {
-    console.error(error);
+  } catch (e) {
+    console.error(e);
     res.status(500).json({ error: "Server error" });
   }
 });
-
+ 
 // Get user data
-authRouter.get("/", async (req, res) => {
+authRouter.get("/", auth, async (req, res) => {
   try {
-    const [users] = await pool.query(
-      "SELECT * FROM users WHERE id = ?",
-      [req.user.id]
+    const { id } = req.user;
+    const [rows, fields] = await req.app.locals.pool.execute(
+      "SELECT id, name, email FROM users WHERE id = ?",
+      [id]
     );
-    const user = users[0];
-    res.json({ ...user, token: req.token });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Server error" });
+    res.json(rows[0]);
+    console.log( res.json(rows[0]))
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
-
 module.exports = authRouter;

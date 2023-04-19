@@ -8,24 +8,23 @@ const authRouter = require("./routes/auth");
 require('dotenv').config()
 
 
-
-
-const DB = mysql.createPool({
+const pool  = mysql.createPool({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
   password: process.env.DB_PASS,
   database: process.env.DB_DATABASE,
   port: process.env.DB_PORT,
   waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0,
+  connectionLimit: 110,
+  queueLimit: 20,
 });
  
 app.use((req, res, next) => {
-  req.DB = DB;
+  req.pool  = pool ;
   next();
 });
 app.use(express.json())
+app.locals.pool = pool;
 app.use(authRouter);
 // (async () => {
 //     try {
@@ -40,7 +39,7 @@ app.use(authRouter);
 //   })();
 
 
-app.listen(PORT,'192.168.0.104',()=>{
+app.listen(PORT,'192.168.0.102',()=>{
     console.log(`conected at PORT: ${PORT}`)
 })
 
